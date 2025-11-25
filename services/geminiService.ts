@@ -2,7 +2,6 @@ import { GoogleGenAI, Type } from "@google/genai";
 import { EmailTemplate } from "../types";
 
 // Initialize Gemini Client
-// NOTE: Ensure your .env file has API_KEY defined.
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
 const RESPONSE_SCHEMA = {
@@ -57,7 +56,7 @@ export const generateEmailTemplate = async (
 
   try {
     const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
+      model: 'gemini-3-pro-preview',
       contents: promptText,
       config: {
         systemInstruction: systemInstruction,
@@ -82,6 +81,7 @@ export const editEmailTemplate = async (
   currentMjml: string,
   userPrompt: string
 ): Promise<Partial<EmailTemplate>> => {
+  
   const systemInstruction = `
     You are Sirz, an expert MJML email editor. 
     You will be provided with an existing MJML template code and a user request to modify it.
@@ -103,7 +103,7 @@ export const editEmailTemplate = async (
 
   try {
     const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
+      model: 'gemini-3-pro-preview',
       contents: `Current MJML Code:\n${currentMjml}`,
       config: {
         systemInstruction: systemInstruction,
