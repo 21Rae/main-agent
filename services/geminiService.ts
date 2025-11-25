@@ -1,22 +1,24 @@
-import { GoogleGenAI, Type } from "@google/genai";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 import { EmailTemplate } from "../types";
 
 // Initialize Gemini Client
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+// Note: @google/generative-ai takes the key directly in the constructor
+const genAI = new GoogleGenerativeAI(process.env.API_KEY || '');
 
+// Using string literals for schema types to ensure compatibility across SDK versions
 const RESPONSE_SCHEMA = {
-  type: Type.OBJECT,
+  type: "OBJECT",
   properties: {
-    title: { type: Type.STRING, description: "Internal name for the template" },
-    subject: { type: Type.STRING, description: "Email subject line" },
-    preheader: { type: Type.STRING, description: "Preview text shown in inbox" },
+    title: { type: "STRING", description: "Internal name for the template" },
+    subject: { type: "STRING", description: "Email subject line" },
+    preheader: { type: "STRING", description: "Preview text shown in inbox" },
     variables: { 
-      type: Type.ARRAY, 
-      items: { type: Type.STRING }, 
+      type: "ARRAY", 
+      items: { type: "STRING" }, 
       description: "List of variable names used (without brackets)" 
     },
-    mjml: { type: Type.STRING, description: "The full MJML source code" },
-    html: { type: Type.STRING, description: "The compiled HTML for preview" }
+    mjml: { type: "STRING", description: "The full MJML source code" },
+    html: { type: "STRING", description: "The compiled HTML for preview" }
   },
   required: ["title", "subject", "preheader", "variables", "mjml", "html"]
 };
@@ -62,21 +64,24 @@ export const generateEmailTemplate = async (
   `;
 
   try {
-    const response = await ai.models.generateContent({
+    const model = genAI.getGenerativeModel({
       model: MODEL_NAME,
-      contents: promptText,
-      config: {
-        systemInstruction: systemInstruction,
+      systemInstruction: systemInstruction,
+      generationConfig: {
         responseMimeType: "application/json",
-        responseSchema: RESPONSE_SCHEMA
+        responseSchema: RESPONSE_SCHEMA as any
       }
     });
 
-    if (!response.text) {
+    const result = await model.generateContent(promptText);
+    const response = result.response;
+    const text = response.text();
+
+    if (!text) {
       throw new Error("No response generated from Gemini.");
     }
 
-    const data = JSON.parse(response.text);
+    const data = JSON.parse(text);
     return data;
   } catch (error: any) {
     console.error("Sirz AI Generation Error:", error);
@@ -116,21 +121,24 @@ export const editEmailTemplate = async (
   `;
 
   try {
-    const response = await ai.models.generateContent({
+    const model = genAI.getGenerativeModel({
       model: MODEL_NAME,
-      contents: `Current MJML Code:\n${currentMjml}`,
-      config: {
-        systemInstruction: systemInstruction,
+      systemInstruction: systemInstruction,
+      generationConfig: {
         responseMimeType: "application/json",
-        responseSchema: RESPONSE_SCHEMA
+        responseSchema: RESPONSE_SCHEMA as any
       }
     });
 
-    if (!response.text) {
+    const result = await model.generateContent(`Current MJML Code:\n${currentMjml}`);
+    const response = result.response;
+    const text = response.text();
+
+    if (!text) {
       throw new Error("No response generated");
     }
 
-    return JSON.parse(response.text);
+    return JSON.parse(text);
   } catch (error) {
     console.error("Sirz AI Edit Error:", error);
     throw error;
