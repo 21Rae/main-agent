@@ -21,10 +21,17 @@ const RESPONSE_SCHEMA = {
   required: ["title", "subject", "preheader", "variables", "mjml", "html"]
 };
 
+// Model configuration - Using 2.5 Flash for speed and reliability
+const MODEL_NAME = 'gemini-2.5-flash';
+
 export const generateEmailTemplate = async (
   promptText: string
 ): Promise<Partial<EmailTemplate>> => {
   
+  if (!process.env.API_KEY) {
+    throw new Error("Missing API Key. Please configure API_KEY in your settings.");
+  }
+
   const systemInstruction = `
     You are Sirz, a world-class email designer specialized in MJML.
     Your goal is to generate visually stunning, modern, and responsive email templates.
@@ -56,7 +63,7 @@ export const generateEmailTemplate = async (
 
   try {
     const response = await ai.models.generateContent({
-      model: 'gemini-3-pro-preview',
+      model: MODEL_NAME,
       contents: promptText,
       config: {
         systemInstruction: systemInstruction,
@@ -66,13 +73,16 @@ export const generateEmailTemplate = async (
     });
 
     if (!response.text) {
-      throw new Error("No response generated");
+      throw new Error("No response generated from Gemini.");
     }
 
     const data = JSON.parse(response.text);
     return data;
-  } catch (error) {
+  } catch (error: any) {
     console.error("Sirz AI Generation Error:", error);
+    if (error.message?.includes('403') || error.message?.includes('API key')) {
+      throw new Error("Invalid or missing API Key. Please check your settings.");
+    }
     throw error;
   }
 };
@@ -82,6 +92,10 @@ export const editEmailTemplate = async (
   userPrompt: string
 ): Promise<Partial<EmailTemplate>> => {
   
+  if (!process.env.API_KEY) {
+    throw new Error("Missing API Key.");
+  }
+
   const systemInstruction = `
     You are Sirz, an expert MJML email editor. 
     You will be provided with an existing MJML template code and a user request to modify it.
@@ -103,7 +117,7 @@ export const editEmailTemplate = async (
 
   try {
     const response = await ai.models.generateContent({
-      model: 'gemini-3-pro-preview',
+      model: MODEL_NAME,
       contents: `Current MJML Code:\n${currentMjml}`,
       config: {
         systemInstruction: systemInstruction,
